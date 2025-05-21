@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crash Detection - Image Viewer</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Traffic Crash Detection System</h1>
+            <p>View and analyze detected crash images</p>
+        </header>
+        
+        <div class="latest-crash">
+            <h2>Latest Detected Crash</h2>
+            <div class="latest-crash-content">
+                <div class="latest-crash-image">
+                    <img id="latestCrashImage" src="img/placeholder.png" alt="Latest crash image">
+                </div>
+                <div class="latest-crash-details">
+                    <p><strong>Camera ID:</strong> <span id="latestCameraId">-</span></p>
+                    <p><strong>Frame ID:</strong> <span id="latestFrameId">-</span></p>
+                    <p><strong>Location:</strong> <span id="latestLocation">-</span></p>
+                    <p><strong>Time:</strong> <span id="latestCrashTime">-</span></p>
+                    <p class="last-update"><small>Last updated: <span id="lastUpdatedTime">-</span></small></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="search-container">
+                    <h3>Filter Crashes</h3>
+                    <div class="filter-group">
+                        <label for="cityFilter">City:</label>
+                        <select id="cityFilter">
+                            <option value="">All Cities</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="districtFilter">District:</label>
+                        <select id="districtFilter">
+                            <option value="">All Districts</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dateRange">Date Range:</label>
+                        <input type="date" id="startDate">
+                        <input type="date" id="endDate">
+                    </div>
+                    <button id="applyFilters">Apply Filters</button>
+                </div>
+
+                <div class="crash-list">
+                    <h3>Detected Crashes</h3>
+                    <ul id="crashList"></ul>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="crash-details">
+                    <h2 id="crashTitle">Select a crash to view details</h2>
+                    <div class="crash-metadata">
+                        <p><strong>Camera ID:</strong> <span id="cameraId">-</span></p>
+                        <p><strong>Frame ID:</strong> <span id="frameId">-</span></p>
+                        <p><strong>Location:</strong> <span id="location">-</span></p>
+                        <p><strong>Time:</strong> <span id="crashTime">-</span></p>
+                    </div>
+                    <div class="image-container">
+                        <img id="crashImage" src="img/placeholder.png" alt="Crash image">
+                    </div>
+                </div>
+
+                <div class="stats-container">
+                    <h3>Crash Statistics</h3>
+                    <div class="chart-container">
+                        <canvas id="crashChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Traffic Crash Detection System</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html> 
