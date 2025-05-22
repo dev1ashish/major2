@@ -38,8 +38,8 @@ function startPolling() {
         clearInterval(pollingInterval);
     }
     
-    // Poll every 5 seconds
-    pollingInterval = setInterval(fetchLatestCrash, 5000);
+    // Poll every 2 seconds for faster real-time updates
+    pollingInterval = setInterval(fetchLatestCrash, 2000);
 }
 
 async function fetchLatestCrash() {
@@ -65,6 +65,20 @@ async function fetchLatestCrash() {
         const crashIdentifier = `${crash.camera_id}-${crash.frame_id}`;
         if (crashIdentifier !== latestCrashId) {
             latestCrashId = crashIdentifier;
+            
+            // Show notification that a new crash was detected
+            console.log(`🚨 NEW CRASH DETECTED: ${crashIdentifier}`);
+            
+            // Add visual flash effect to indicate new crash
+            const latestSection = document.querySelector('.latest-crash');
+            if (latestSection) {
+                latestSection.style.border = '3px solid #ff0000';
+                latestSection.style.transition = 'border 0.5s ease';
+                setTimeout(() => {
+                    latestSection.style.border = '1px solid #ddd';
+                }, 2000);
+            }
+            
             displayLatestCrash(crash);
             
             // If we have a new crash, refresh the entire crash list
@@ -73,6 +87,8 @@ async function fetchLatestCrash() {
                 renderCrashList();
                 updateChart();
             });
+        } else {
+            console.log('No new crashes detected');
         }
     } catch (error) {
         console.error('Error fetching latest crash:', error);
@@ -119,9 +135,20 @@ function displayLatestCrash(crash) {
     latestLocation.textContent = crash.city ? `${crash.city}${crash.district ? ', ' + crash.district : ''}` : 'Unknown';
     latestCrashTime.textContent = formatDateTime(crash.crash_time);
     
-    // Set the image source
-    latestCrashImage.src = `/api/crashes/${crash.camera_id}/${crash.frame_id}/image?t=${Date.now()}`; // Add timestamp to prevent caching
+    // Set the image source with cache-busting timestamp
+    latestCrashImage.src = `/api/crashes/${crash.camera_id}/${crash.frame_id}/image?t=${Date.now()}`;
     latestCrashImage.alt = `Crash ${crash.camera_id}-${crash.frame_id} image`;
+    
+    // Add loading state
+    latestCrashImage.style.opacity = '0.5';
+    latestCrashImage.onload = function() {
+        this.style.opacity = '1';
+        console.log(`✅ Loaded crash image: ${crash.camera_id}-${crash.frame_id}`);
+    };
+    latestCrashImage.onerror = function() {
+        console.error(`❌ Failed to load crash image: ${crash.camera_id}-${crash.frame_id}`);
+        this.style.opacity = '1';
+    };
     
     // Update the last updated time
     lastUpdatedTime.textContent = new Date().toLocaleTimeString();
