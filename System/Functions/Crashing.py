@@ -21,9 +21,14 @@ class Crashing:
             trackers: List of vehicle trackers
             
         Returns:
-            crash_dimensions: Coordinates of crash area or empty list if no crash
+            tuple: (crash_dimensions, crash_frame, crash_frame_index)
+                - crash_dimensions: Coordinates of crash area or empty list if no crash
+                - crash_frame: The actual frame where crash was detected (with visual indicators)
+                - crash_frame_index: Index of the frame where crash was detected
         """
         crash_dimensions = []
+        crash_frame = None
+        crash_frame_index = None
 
         # Check all tracker pairs for potential collisions
         for i in range(len(trackers)):
@@ -52,15 +57,36 @@ class Crashing:
                     else:
                         crash_dimensions.extend(self.predict(frames, [tracker_B, tracker_A]))
 
-        # Combine crash areas if multiple crashes detected
+        # Combine crash areas if multiple crashes detected and create crash frame
         if len(crash_dimensions) > 0:
             xmin = min(dim[0] for dim in crash_dimensions)
             ymin = min(dim[1] for dim in crash_dimensions)
             xmax = max(dim[2] for dim in crash_dimensions)
             ymax = max(dim[3] for dim in crash_dimensions)
             crash_dimensions = [xmin, ymin, xmax, ymax]
+            
+            # Create crash frame with visual indicators using the last frame
+            if len(frames) > 0:
+                crash_frame_index = len(frames) - 1
+                crash_frame = frames[crash_frame_index].copy()
+                
+                # Draw red rectangle around crash area
+                cv2.rectangle(crash_frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 3)
+                
+                # Add "CRASH DETECTED!" text
+                cv2.putText(
+                    crash_frame, 
+                    "CRASH DETECTED!", 
+                    (max(10, xmin), max(30, ymin - 10)), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    1.0, 
+                    (0, 0, 255), 
+                    2
+                )
+                
+                print(f"Created crash frame with dimensions: {crash_dimensions}")
 
-        return crash_dimensions
+        return crash_dimensions, crash_frame, crash_frame_index
 
     def checkDistance(self, tracker_A, tracker_B, frame_no, distance_threshold):
         """

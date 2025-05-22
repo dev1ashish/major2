@@ -112,7 +112,7 @@ class Master:
         self.write(camera_id, new_frames, starting_frame_id, frame_width, frame_height, True)
         return no_of_frames
 
-    def checkResult(self, camera_id, starting_frame_id, crash_dimentions, city, district_no):
+    def checkResult(self, camera_id, starting_frame_id, crash_dimentions, city, district_no, crash_frame=None):
         """Process crash detection results"""
         if len(crash_dimentions) == 0:
             return
@@ -137,12 +137,15 @@ class Master:
         # Save crash records for persistence
         self._save_crash_records()
         
-        # Manually create a test image and save to database (for debugging)
-        # This will ensure we always have an image in the database
+        # Use the actual crash frame if provided, otherwise create a dummy one
         try:
-            crash_pic = self.getCrashPhoto(camera_id, starting_frame_id)
+            crash_pic = crash_frame
             
-            # If we couldn't get a crash photo, create a dummy one
+            # If we don't have a crash frame, try to get one from the video
+            if crash_pic is None:
+                crash_pic = self.getCrashPhoto(camera_id, starting_frame_id)
+            
+            # If we still don't have a crash photo, create a dummy one
             if crash_pic is None:
                 # Create a colored image with text
                 crash_pic = np.zeros((400, 600, 3), dtype=np.uint8)
@@ -180,6 +183,8 @@ class Master:
                 # Save this dummy image to file too for debugging
                 cv2.imwrite(f"temp_crash_{camera_id}_{starting_frame_id}.jpg", crash_pic)
                 print(f"Created dummy crash image for {camera_id}-{starting_frame_id}")
+            else:
+                print(f"Using actual crash frame for {camera_id}-{starting_frame_id}")
             
             # Save to database
             print(f"Saving crash image to database for {camera_id}-{starting_frame_id}")
@@ -195,6 +200,10 @@ class Master:
             
             # Also save a copy of the image to disk for verification
             cv2.imwrite(f"saved_crash_{camera_id}_{starting_frame_id}.jpg", crash_pic)
+            
+            # Send notification
+            self.sendNotification(camera_id, starting_frame_id, city, district_no)
+            
         except Exception as e:
             print(f"Error saving crash image: {str(e)}")
         
@@ -259,6 +268,7 @@ class Master:
             camera_id=camera_id,
             city=city,
             district_no=district_no,
+            frame_id=starting_frame_id,
             crash_pic=crash_pic
         )
         

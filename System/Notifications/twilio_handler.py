@@ -45,17 +45,22 @@ class TwilioHandler:
             return temp_path
         return None
 
-    def send_crash_alert(self, camera_id, city, district_no, crash_pic=None):
+    def send_crash_alert(self, camera_id, city, district_no, frame_id=None, crash_pic=None):
         if not self.client:
             print("Twilio client not initialized. Skipping notifications.")
             return False
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Create direct link to the crash in the frontend
+        frontend_url = f"http://localhost:3333/?crash={camera_id}-{frame_id if frame_id else 1}"
+        
         message_body = (
             f"🚨 CRASH ALERT!\n"
             f"Time: {timestamp}\n"
             f"Location: {city}, {district_no}\n"
-            f"Camera ID: {camera_id}"
+            f"Camera ID: {camera_id}\n"
+            f"🔗 View Details: {frontend_url}"
         )
 
         # Handle crash_pic if it's a numpy array

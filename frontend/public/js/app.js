@@ -16,8 +16,17 @@ applyFiltersBtn.addEventListener('click', applyFilters);
 // Functions
 async function initialize() {
     try {
-        // Start by getting the latest crash
-        await fetchLatestCrash();
+        // Check if there's a specific crash in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const crashParam = urlParams.get('crash');
+        
+        if (crashParam) {
+            console.log(`🔗 Loading specific crash from URL: ${crashParam}`);
+            await loadSpecificCrash(crashParam);
+        } else {
+            // Start by getting the latest crash
+            await fetchLatestCrash();
+        }
         
         // Get all crashes for the list
         await fetchCrashes();
@@ -25,7 +34,7 @@ async function initialize() {
         renderCrashList();
         initializeChart();
         
-        // Start polling for new crashes every 5 seconds
+        // Start polling for new crashes
         startPolling();
     } catch (error) {
         console.error('Initialization error:', error);
@@ -94,6 +103,74 @@ async function fetchLatestCrash() {
         console.error('Error fetching latest crash:', error);
         // Try fetching test data as fallback
         await fetchTestCrashData();
+    }
+}
+
+async function loadSpecificCrash(crashParam) {
+    try {
+        // Parse crash parameter (format: camera_id-frame_id)
+        const parts = crashParam.split('-');
+        if (parts.length !== 2) {
+            console.error('Invalid crash parameter format. Expected: camera_id-frame_id');
+            return;
+        }
+        
+        const [cameraId, frameId] = parts;
+        console.log(`Loading crash: Camera ${cameraId}, Frame ${frameId}`);
+        
+        // Fetch the specific crash
+        const response = await fetch(`/api/crashes/${cameraId}/${frameId}`);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                console.error(`Crash ${crashParam} not found in database`);
+                // Show an error message to user
+                showCrashNotFoundMessage(crashParam);
+                return;
+            }
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const crash = await response.json();
+        console.log('Loaded specific crash:', crash);
+        
+        // Display this crash as the latest
+        latestCrashId = crashParam;
+        displayLatestCrash(crash);
+        
+        // Add visual indication that this is from a link
+        const latestSection = document.querySelector('.latest-crash');
+        if (latestSection) {
+            const linkIndicator = document.createElement('div');
+            linkIndicator.style.cssText = `
+                background: #4CAF50;
+                color: white;
+                padding: 5px 10px;
+                margin-bottom: 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                text-align: center;
+            `;
+            linkIndicator.textContent = '🔗 Loaded from SMS Link';
+            latestSection.insertBefore(linkIndicator, latestSection.firstChild);
+        }
+        
+    } catch (error) {
+        console.error('Error loading specific crash:', error);
+        showCrashNotFoundMessage(crashParam);
+    }
+}
+
+function showCrashNotFoundMessage(crashParam) {
+    const latestSection = document.querySelector('.latest-crash');
+    if (latestSection) {
+        latestSection.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #666;">
+                <h3>❌ Crash Not Found</h3>
+                <p>Crash <strong>${crashParam}</strong> was not found in the database.</p>
+                <p>It may have been removed or the link is invalid.</p>
+            </div>
+        `;
     }
 }
 

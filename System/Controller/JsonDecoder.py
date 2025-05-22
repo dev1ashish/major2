@@ -125,8 +125,9 @@ class JsonDecoder(threading.Thread):
             crash_dimentions = msg[CRASH_DIMENTIONS]
             city = msg[CITY]
             district_no = msg[DISTRICT]
+            crash_frame = msg.get("CRASH_FRAME", None)
 
-            self.result(camera_id, starting_frame_id, crash_dimentions, city, district_no)
+            self.result(camera_id, starting_frame_id, crash_dimentions, city, district_no, crash_frame)
 
         elif func == SEARCH:  # Search for crash records
             start_date = msg[START_DATE]
@@ -197,19 +198,19 @@ class JsonDecoder(threading.Thread):
 
         start_crash_time = time()
         crashing = Crashing(self.vif)
-        crash_dimentions = crashing.crash(frames, trackers)
+        crash_dimentions, crash_frame, crash_frame_index = crashing.crash(frames, trackers)
         
         self.printLog("Crash", camera_id, start_crash_time, starting_frame_id+len(frames))
         self.sender_encode.result(camera_id, starting_frame_id, crash_dimentions, 
                                  start_detect_time, end_detect_time, start_track_time, 
-                                 end_track_time, start_crash_time, city, district_no)
+                                 end_track_time, start_crash_time, city, district_no, crash_frame)
 
-    def result(self, camera_id, starting_frame_id, crash_dimentions, city, district_no):
+    def result(self, camera_id, starting_frame_id, crash_dimentions, city, district_no, crash_frame):
         """
         Process crash detection results
         """
         master = Master()
-        master.checkResult(camera_id, starting_frame_id, crash_dimentions, city, district_no)
+        master.checkResult(camera_id, starting_frame_id, crash_dimentions, city, district_no, crash_frame)
 
     def query(self, start_date, end_date, start_time, end_time, city, district):
         """Execute search query for crash records"""
