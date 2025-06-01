@@ -1,4 +1,35 @@
-// DOM Elementsconst crashList = document.getElementById('crashList');const crashTitle = document.getElementById('crashTitle');const cameraIdEl = document.getElementById('cameraId');const frameIdEl = document.getElementById('frameId');const locationEl = document.getElementById('location');const crashTimeEl = document.getElementById('crashTime');const crashImage = document.getElementById('crashImage');const crashChart = document.getElementById('crashChart');const cityFilter = document.getElementById('cityFilter');const districtFilter = document.getElementById('districtFilter');const startDateFilter = document.getElementById('startDate');const endDateFilter = document.getElementById('endDate');const applyFiltersBtn = document.getElementById('applyFilters');// Latest crash elementsconst latestCrashImage = document.getElementById('latestCrashImage');const latestCameraId = document.getElementById('latestCameraId');const latestFrameId = document.getElementById('latestFrameId');const latestLocation = document.getElementById('latestLocation');const latestCrashTime = document.getElementById('latestCrashTime');const lastUpdatedTime = document.getElementById('lastUpdatedTime');
+// DOM Elements
+const crashList = document.getElementById('crashList');
+const crashTitle = document.getElementById('crashTitle');
+const crashTimeEl = document.getElementById('crashTime');
+const crashImage = document.getElementById('crashImage');
+const crashChart = document.getElementById('crashChart');
+const cityFilter = document.getElementById('cityFilter');
+const districtFilter = document.getElementById('districtFilter');
+const startDateFilter = document.getElementById('startDate');
+const endDateFilter = document.getElementById('endDate');
+const applyFiltersBtn = document.getElementById('applyFilters');
+
+// Latest crash elements
+const latestCrashImage = document.getElementById('latestCrashImage');
+const latestCrashTime = document.getElementById('latestCrashTime');
+const lastUpdatedTime = document.getElementById('lastUpdatedTime');
+
+// Action button elements
+const latestApproveBtn = document.getElementById('latestApproveBtn');
+const latestDisapproveBtn = document.getElementById('latestDisapproveBtn');
+const detailApproveBtn = document.getElementById('detailApproveBtn');
+const detailDisapproveBtn = document.getElementById('detailDisapproveBtn');
+
+// Modal elements
+const mapModal = document.getElementById('mapModal');
+const closeModal = document.querySelector('.close-modal');
+const modalCrashId = document.getElementById('modalCrashId');
+const modalLocation = document.getElementById('modalLocation');
+const modalTime = document.getElementById('modalTime');
+const confirmLocationBtn = document.getElementById('confirmLocation');
+const adjustLocationBtn = document.getElementById('adjustLocation');
+const cancelModalBtn = document.getElementById('cancelModal');
 
 // State
 let crashes = [];
@@ -8,14 +39,57 @@ let selectedCrash = null;
 let chart = null;
 let latestCrashId = null; // To track if a new crash has been detected
 let pollingInterval = null;
+let map = null; // Leaflet map instance
+let currentCrashForApproval = null; // Track which crash is being approved
+
+// Dummy locations for different cities (latitude, longitude)
+const dummyLocations = {
+    'Cairo': [30.0444, 31.2357],
+    'Alexandria': [31.2001, 29.9187],
+    'Gizah': [30.0131, 31.2089],
+    'Port Said': [31.2653, 32.3019],
+    'Suez': [29.9668, 32.5498],
+    'Luxor': [25.6872, 32.6396],
+    'Aswan': [24.0889, 32.8998],
+    'Hurghada': [27.2574, 33.8129],
+    'Test City': [30.0626, 31.2497], // Default for test data
+    'Unknown': [30.0626, 31.2497] // Default fallback
+};
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initialize);
 applyFiltersBtn.addEventListener('click', applyFilters);
 
+// Action button event listeners
+latestApproveBtn.addEventListener('click', () => {
+    console.log('Latest approve button clicked!');
+    handleApprove('latest');
+});
+latestDisapproveBtn.addEventListener('click', () => handleDisapprove('latest'));
+detailApproveBtn.addEventListener('click', () => {
+    console.log('Detail approve button clicked!');
+    handleApprove('detail');
+});
+detailDisapproveBtn.addEventListener('click', () => handleDisapprove('detail'));
+
+// Modal event listeners
+closeModal.addEventListener('click', closeMapModal);
+cancelModalBtn.addEventListener('click', closeMapModal);
+confirmLocationBtn.addEventListener('click', handleConfirmLocation);
+adjustLocationBtn.addEventListener('click', handleAdjustLocation);
+
+// Close modal when clicking outside of it
+window.addEventListener('click', (event) => {
+    if (event.target === mapModal) {
+        closeMapModal();
+    }
+});
+
 // Functions
 async function initialize() {
     try {
+        console.log('Initializing application...');
+        
         // Check if there's a specific crash in the URL
         const urlParams = new URLSearchParams(window.location.search);
         const crashParam = urlParams.get('crash');
@@ -36,6 +110,8 @@ async function initialize() {
         
         // Start polling for new crashes
         startPolling();
+        
+        console.log('Application initialized successfully');
     } catch (error) {
         console.error('Initialization error:', error);
     }
@@ -206,10 +282,7 @@ async function fetchTestCrashData() {
 }
 
 function displayLatestCrash(crash) {
-    // Update the latest crash section
-    latestCameraId.textContent = crash.camera_id;
-    latestFrameId.textContent = crash.frame_id;
-    latestLocation.textContent = crash.city ? `${crash.city}${crash.district ? ', ' + crash.district : ''}` : 'Unknown';
+    // Update the latest crash section (only time now)
     latestCrashTime.textContent = formatDateTime(crash.crash_time);
     
     // Set the image source with cache-busting timestamp
@@ -229,6 +302,10 @@ function displayLatestCrash(crash) {
     
     // Update the last updated time
     lastUpdatedTime.textContent = new Date().toLocaleTimeString();
+    
+    // Store current crash data for potential approval
+    currentCrashForApproval = crash;
+    console.log('Current crash for approval set:', currentCrashForApproval);
 }
 
 async function fetchCrashes() {
@@ -304,6 +381,7 @@ function renderCrashList(filteredCrashes = null) {
             // Select current crash
             li.classList.add('selected');
             selectedCrash = crash;
+            currentCrashForApproval = crash; // Update current crash for approval
             displayCrashDetails(crash);
         });
         
@@ -313,9 +391,6 @@ function renderCrashList(filteredCrashes = null) {
 
 function displayCrashDetails(crash) {
     crashTitle.textContent = `Crash #${crash.camera_id}-${crash.frame_id}`;
-    cameraIdEl.textContent = crash.camera_id;
-    frameIdEl.textContent = crash.frame_id;
-    locationEl.textContent = crash.city ? `${crash.city}${crash.district ? ', ' + crash.district : ''}` : 'Unknown';
     crashTimeEl.textContent = formatDateTime(crash.crash_time);
     
     // Load the crash image
@@ -421,4 +496,172 @@ function updateChart(filteredCrashes = null) {
     chart.data.labels = labels;
     chart.data.datasets[0].data = data;
     chart.update();
+}
+
+// Action button handlers
+function handleApprove(source) {
+    const crash = (source === 'latest') ? currentCrashForApproval : selectedCrash;
+    
+    console.log(`Handle approve called for source: ${source}`);
+    console.log('Current crash for approval:', currentCrashForApproval);
+    console.log('Selected crash:', selectedCrash);
+    console.log('Final crash to approve:', crash);
+    
+    if (!crash) {
+        alert('No crash selected for approval');
+        console.error('No crash data available for approval');
+        return;
+    }
+    
+    console.log(`✅ Approving crash: ${crash.camera_id}-${crash.frame_id}`);
+    
+    // Show the map modal
+    showMapModal(crash);
+}
+
+function handleDisapprove(source) {
+    const crash = (source === 'latest') ? currentCrashForApproval : selectedCrash;
+    
+    if (!crash) {
+        alert('No crash selected for disapproval');
+        return;
+    }
+    
+    console.log(`Disapproving crash: ${crash.camera_id}-${crash.frame_id}`);
+    
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to disapprove crash ${crash.camera_id}-${crash.frame_id}?\n\nThis will mark the crash as a false positive.`);
+    
+    if (confirmed) {
+        // Here you could add API call to update crash status
+        alert(`Crash ${crash.camera_id}-${crash.frame_id} has been marked as disapproved`);
+        
+        // You could add visual indication or remove from list
+        console.log('Crash disapproved:', crash);
+    }
+}
+
+function showMapModal(crash) {
+    console.log('🗺️ Opening map modal for crash:', crash);
+    
+    // Update modal content with crash info
+    modalCrashId.textContent = `${crash.camera_id}-${crash.frame_id}`;
+    modalLocation.textContent = crash.city ? `${crash.city}${crash.district ? ', ' + crash.district : ''}` : 'Unknown';
+    modalTime.textContent = formatDateTime(crash.crash_time);
+    
+    // Show the modal
+    mapModal.style.display = 'block';
+    console.log('Modal display set to block');
+    
+    // Initialize the map after modal is visible
+    setTimeout(() => {
+        console.log('Initializing map...');
+        initializeMap(crash);
+    }, 300);
+}
+
+function initializeMap(crash) {
+    console.log('🗺️ Initializing map for crash:', crash);
+    
+    // Get dummy coordinates for the crash location
+    const city = crash.city || 'Unknown';
+    const coordinates = dummyLocations[city] || dummyLocations['Unknown'];
+    
+    // Add some random offset to make it look more realistic
+    const lat = coordinates[0] + (Math.random() - 0.5) * 0.01;
+    const lng = coordinates[1] + (Math.random() - 0.5) * 0.01;
+    
+    console.log(`Map coordinates: ${lat}, ${lng} for city: ${city}`);
+    
+    // Clear existing map if it exists
+    if (map) {
+        console.log('Removing existing map instance');
+        map.remove();
+    }
+    
+    // Wait for DOM to be ready
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) {
+        console.error('Map container not found!');
+        return;
+    }
+    
+    console.log('Creating Leaflet map...');
+    
+    try {
+        // Initialize Leaflet map
+        map = L.map('map').setView([lat, lng], 15);
+        
+        // Add tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Add marker for crash location
+        const marker = L.marker([lat, lng]).addTo(map);
+        
+        // Add popup with crash info
+        marker.bindPopup(`
+            <div style="text-align: center;">
+                <h4>🚨 Crash Location</h4>
+                <p><strong>ID:</strong> ${crash.camera_id}-${crash.frame_id}</p>
+                <p><strong>Time:</strong> ${formatDateTime(crash.crash_time)}</p>
+                <p><strong>Location:</strong> ${crash.city || 'Unknown'}</p>
+            </div>
+        `).openPopup();
+        
+        // Add circle to show approximate area
+        L.circle([lat, lng], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.3,
+            radius: 100
+        }).addTo(map);
+        
+        console.log(`✅ Map initialized successfully at coordinates: ${lat}, ${lng}`);
+        
+        // Force map to resize after initialization
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error initializing map:', error);
+        alert('Error loading map. Please try again.');
+    }
+}
+
+function closeMapModal() {
+    console.log('Closing map modal');
+    mapModal.style.display = 'none';
+    
+    // Clean up map instance
+    if (map) {
+        console.log('Cleaning up map instance');
+        map.remove();
+        map = null;
+    }
+}
+
+function handleConfirmLocation() {
+    const crash = currentCrashForApproval || selectedCrash;
+    
+    if (!crash) {
+        alert('No crash data available');
+        return;
+    }
+    
+    console.log(`Location confirmed for crash: ${crash.camera_id}-${crash.frame_id}`);
+    
+    // Here you could add API call to update crash status as approved
+    alert(`✅ Crash ${crash.camera_id}-${crash.frame_id} has been approved!\n\nLocation verified and emergency services will be notified.`);
+    
+    closeMapModal();
+}
+
+function handleAdjustLocation() {
+    alert('📍 Location adjustment feature would allow you to drag the marker to the correct position.\n\nThis functionality can be implemented by making the marker draggable.');
+    
+    // You could implement draggable marker functionality here
+    console.log('Adjust location requested');
 } 

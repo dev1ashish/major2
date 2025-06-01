@@ -6,6 +6,9 @@
     <title>Crash Detection - Image Viewer</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS and JS for map functionality -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="container">
@@ -19,11 +22,13 @@
             <div class="latest-crash-content">
                 <div class="latest-crash-image">
                     <img id="latestCrashImage" src="img/placeholder.png" alt="Latest crash image">
+                    <!-- Added approve/disapprove buttons for latest crash -->
+                    <div class="crash-action-buttons">
+                        <button id="latestApproveBtn" class="approve-btn">✓ Approve Crash</button>
+                        <button id="latestDisapproveBtn" class="disapprove-btn">✗ Disapprove</button>
+                    </div>
                 </div>
                 <div class="latest-crash-details">
-                    <p><strong>Camera ID:</strong> <span id="latestCameraId">-</span></p>
-                    <p><strong>Frame ID:</strong> <span id="latestFrameId">-</span></p>
-                    <p><strong>Location:</strong> <span id="latestLocation">-</span></p>
                     <p><strong>Time:</strong> <span id="latestCrashTime">-</span></p>
                     <p class="last-update"><small>Last updated: <span id="lastUpdatedTime">-</span></small></p>
                 </div>
@@ -64,13 +69,15 @@
                 <div class="crash-details">
                     <h2 id="crashTitle">Select a crash to view details</h2>
                     <div class="crash-metadata">
-                        <p><strong>Camera ID:</strong> <span id="cameraId">-</span></p>
-                        <p><strong>Frame ID:</strong> <span id="frameId">-</span></p>
-                        <p><strong>Location:</strong> <span id="location">-</span></p>
                         <p><strong>Time:</strong> <span id="crashTime">-</span></p>
                     </div>
                     <div class="image-container">
                         <img id="crashImage" src="img/placeholder.png" alt="Crash image">
+                        <!-- Added approve/disapprove buttons for detailed crash view -->
+                        <div class="crash-action-buttons">
+                            <button id="detailApproveBtn" class="approve-btn">✓ Approve Crash</button>
+                            <button id="detailDisapproveBtn" class="disapprove-btn">✗ Disapprove</button>
+                        </div>
                     </div>
                 </div>
 
@@ -79,6 +86,29 @@
                     <div class="chart-container">
                         <canvas id="crashChart"></canvas>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for map display -->
+    <div id="mapModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Crash Location Verification</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="crash-info-summary">
+                    <p><strong>Crash ID:</strong> <span id="modalCrashId">-</span></p>
+                    <p><strong>Location:</strong> <span id="modalLocation">-</span></p>
+                    <p><strong>Time:</strong> <span id="modalTime">-</span></p>
+                </div>
+                <div id="map" class="map-container"></div>
+                <div class="modal-actions">
+                    <button id="confirmLocation" class="confirm-btn">Confirm Location</button>
+                    <button id="adjustLocation" class="adjust-btn">Adjust Location</button>
+                    <button id="cancelModal" class="cancel-btn">Cancel</button>
                 </div>
             </div>
         </div>
